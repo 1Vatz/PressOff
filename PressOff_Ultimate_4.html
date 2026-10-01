@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#06060a">
+<title>PressOff — The clipboard, reinvented</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+:root{
+ --bg:#06060a;--ink:#f5f5f7;--muted:rgba(245,245,247,.55);--faint:rgba(245,245,247,.34);
+ --blue:#0a84ff;--green:#30d158;--cyan:#5ac8fa;--red:#ff453a;--purple:#5e5ce6;--violet:#bf5af2;
+ --card:rgba(255,255,255,.045);--line:rgba(255,255,255,.1);
+}
+html,body{background:var(--bg);color:var(--ink);font-family:-apple-system,"SF Pro Display","SF Pro Text",system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden;scroll-behavior:smooth;}
+.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.aurora::before,.aurora::after{content:'';position:absolute;border-radius:50%;filter:blur(90px);opacity:.45;}
+.aurora::before{width:520px;height:520px;top:-180px;left:50%;transform:translateX(-50%);background:radial-gradient(circle,rgba(10,132,255,.5),transparent 70%);animation:d1 18s ease-in-out infinite;}
+.aurora::after{width:440px;height:440px;bottom:-160px;right:-120px;background:radial-gradient(circle,rgba(94,92,230,.45),transparent 70%);animation:d2 22s ease-in-out infinite;}
+.aurora i{position:absolute;width:380px;height:380px;border-radius:50%;filter:blur(90px);bottom:10%;left:-140px;background:radial-gradient(circle,rgba(48,209,88,.26),transparent 70%);opacity:.4;animation:d3 26s ease-in-out infinite;}
+@keyframes d1{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-32%) translateY(40px)}}
+@keyframes d2{0%,100%{transform:translate(0,0)}50%{transform:translate(-60px,-50px)}}
+@keyframes d3{0%,100%{transform:translate(0,0)}50%{transform:translate(80px,-40px)}}
+.grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.022;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+.wrap{position:relative;z-index:2;max-width:540px;margin:0 auto;padding:0 22px;}
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .8s cubic-bezier(.2,.7,.3,1),transform .8s cubic-bezier(.2,.7,.3,1);}
+.reveal.in{opacity:1;transform:none;}
+
+/* hero */
+.hero{padding-top:calc(env(safe-area-inset-top) + 70px);padding-bottom:26px;text-align:center;}
+.kicker{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:.5px;color:var(--cyan);background:rgba(90,200,250,.1);border:.5px solid rgba(90,200,250,.28);padding:7px 15px;border-radius:100px;margin-bottom:24px;backdrop-filter:blur(20px);}
+.kicker .led{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:beat 2s ease-in-out infinite;}
+@keyframes beat{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.55}}
+.hero h1{font-size:60px;font-weight:800;letter-spacing:-3px;line-height:.95;}
+.hero h1 .g{background:linear-gradient(120deg,#0a84ff,#5e5ce6 45%,#bf5af2);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.hero .lede{margin-top:18px;font-size:18px;line-height:1.5;color:var(--muted);}
+.hero .lede b{color:var(--ink);font-weight:600;}
+.kpis{display:flex;gap:11px;justify-content:center;margin-top:28px;}
+.kpi{flex:1;max-width:118px;padding:16px 8px;background:var(--card);border:.5px solid var(--line);border-radius:18px;backdrop-filter:blur(20px);}
+.kpi-n{font-size:27px;font-weight:800;letter-spacing:-1px;background:linear-gradient(135deg,#5edc85,#30d158);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.kpi-l{font-size:9px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;color:var(--faint);margin-top:5px;}
+.scrollcue{margin-top:32px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--faint);animation:bob 2.2s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(6px);opacity:1}}
+
+.head{text-align:center;margin:60px 0 6px;}
+.eyebrow{font-size:10px;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;color:var(--cyan);margin-bottom:12px;}
+.title{font-size:30px;font-weight:780;letter-spacing:-1.3px;line-height:1.12;}
+.title em{font-style:normal;background:linear-gradient(120deg,#0a84ff,#5e5ce6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.sub{font-size:13.5px;color:var(--muted);margin-top:9px;line-height:1.55;}
+.sub b{color:var(--ink);font-weight:600;}
+
+/* ─── DEMO PHONE ─── */
+.stage{margin-top:22px;display:flex;justify-content:center;}
+.phone{width:100%;max-width:360px;background:linear-gradient(180deg,#0d0d12,#08080c);border:1px solid rgba(255,255,255,.14);border-radius:48px;padding:11px;box-shadow:0 44px 100px rgba(0,0,0,.72),0 0 0 1px rgba(255,255,255,.04),inset 0 1px 0 rgba(255,255,255,.08);position:relative;}
+.pglow{position:absolute;inset:-1px;border-radius:48px;padding:1px;background:linear-gradient(135deg,rgba(10,132,255,.55),transparent 38%,transparent 62%,rgba(94,92,230,.55));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.7;pointer-events:none;}
+.screen{background:#000;border-radius:38px;overflow:hidden;position:relative;height:580px;}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:112px;height:28px;background:#000;border-radius:18px;z-index:80;}
+.sbar{display:flex;justify-content:space-between;align-items:center;padding:14px 28px 8px;font-size:12px;font-weight:600;}
+.sbar .r{display:flex;gap:5px;align-items:center;font-size:10px;}
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 18px 11px;border-bottom:.5px solid rgba(255,255,255,.07);}
+.appbar .back{font-size:15px;color:var(--blue);font-weight:500;}
+.appbar .tbox{text-align:center;}
+.appbar .at{font-size:13px;font-weight:700;}
+.appbar .am{font-size:9px;font-weight:700;letter-spacing:.8px;margin-top:2px;transition:color .25s;color:var(--faint);}
+.appbar .am.cursor{color:var(--blue);}.appbar .am.select{color:var(--green);}.appbar .am.copy{color:var(--cyan);}.appbar .am.paste{color:var(--red);}
+.appbar .dots{font-size:15px;color:var(--blue);}
+
+.doc{padding:18px 20px;font-size:17px;line-height:1.85;white-space:pre-wrap;word-break:break-word;position:relative;}
+.doc .w{position:relative;border-radius:3px;padding:0 1px;transition:background .15s,color .15s;}
+.doc .w.selecting{background:rgba(10,132,255,.32);}      /* live drag (classic+po cursor) */
+.doc .w.selected{background:rgba(48,209,88,.42);box-shadow:0 -2px 0 rgba(48,209,88,.4),0 2px 0 rgba(48,209,88,.4);}
+.doc .w.copyflash{animation:copyflash .85s cubic-bezier(.3,.7,.3,1);}
+@keyframes copyflash{
+ 0%{background:rgba(48,209,88,.42);transform:translateY(0) scale(1)}
+ 25%{background:rgba(90,200,250,.85);color:#04141a;transform:translateY(-3px) scale(1.06)}
+ 45%{transform:translateY(0) scale(1)}
+ 55%{transform:translateX(-1px)}65%{transform:translateX(1.5px)}75%{transform:translateX(-1px)}85%{transform:translateX(.6px)}
+ 100%{background:rgba(48,209,88,0);color:inherit;transform:none}
+}
+.doc .w.pasted{animation:pastein .7s cubic-bezier(.34,1.5,.64,1);}
+@keyframes pastein{0%{opacity:0;filter:blur(5px);background:rgba(255,69,58,.4);transform:scale(.7)}55%{background:rgba(255,69,58,.25)}100%{opacity:1;filter:blur(0);background:transparent;transform:none}}
+.caret{display:inline-block;width:2px;height:1.05em;background:var(--blue);vertical-align:text-bottom;margin:0 -1px;border-radius:1px;box-shadow:0 0 7px rgba(10,132,255,.9);position:relative;top:3px;}
+.caret.blink{animation:blink .8s step-end infinite;}
+.caret.red{background:var(--red);box-shadow:0 0 7px rgba(255,69,58,.9);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* selection handles (classic) */
+.handle{position:absolute;width:2px;background:var(--blue);z-index:30;opacity:0;transition:opacity .2s,left .4s cubic-bezier(.4,0,.2,1),top .4s;}
+.handle::before{content:'';position:absolute;width:11px;height:11px;border-radius:50%;background:var(--blue);left:-4.5px;box-shadow:0 1px 4px rgba(0,0,0,.5);}
+.handle.s::before{top:-8px;}.handle.e::before{bottom:-8px;}
+.handle.show{opacity:1;}
+
+/* floating menu (classic) */
+.fmenu{position:absolute;z-index:40;display:flex;background:linear-gradient(180deg,rgba(70,70,76,.99),rgba(44,44,50,.99));border-radius:10px;box-shadow:0 10px 26px rgba(0,0,0,.65),0 0 0 .5px rgba(255,255,255,.16);opacity:0;transform:scale(.82) translateY(5px);transition:opacity .2s,transform .22s;pointer-events:none;}
+.fmenu.show{opacity:1;transform:scale(1) translateY(0);}
+.fmenu .mi{font-size:11px;font-weight:600;color:#fff;padding:8px 13px;border-right:.5px solid rgba(255,255,255,.12);}
+.fmenu .mi:last-child{border-right:none;}
+.fmenu .mi.hot{background:var(--blue);}
+.fmenu .mi.hot.tapped{animation:mitap .3s ease;}
+@keyframes mitap{0%{background:var(--blue)}50%{background:#5aa9ff}100%{background:var(--blue)}}
+
+/* ghost finger */
+.finger{position:absolute;width:42px;height:42px;border-radius:50%;background:radial-gradient(circle at 36% 30%,rgba(255,255,255,.96),rgba(205,205,215,.5) 56%,rgba(150,150,160,0) 74%);box-shadow:0 6px 18px rgba(0,0,0,.55),0 0 0 1.5px rgba(255,255,255,.32);transform:translate(-50%,-50%);left:0;top:0;opacity:0;pointer-events:none;z-index:50;transition:left .45s cubic-bezier(.4,0,.2,1),top .45s cubic-bezier(.4,0,.2,1),opacity .25s,transform .14s;}
+.finger.show{opacity:.95;}
+.finger.press{transform:translate(-50%,-50%) scale(.8);}
+.finger.force{transform:translate(-50%,-50%) scale(.66);}     /* 3D/force touch deep press */
+.finger .ring{position:absolute;inset:-7px;border-radius:50%;border:2px solid #fff;opacity:0;}
+.finger.tap .ring{animation:fring .55s ease-out;}
+@keyframes fring{0%{transform:scale(.5);opacity:.85}100%{transform:scale(1.7);opacity:0}}
+.finger .forcering{position:absolute;inset:-3px;border-radius:50%;border:2.5px solid var(--green);opacity:0;}
+.finger.forcepulse .forcering{animation:fpulse .7s ease-out;}
+@keyframes fpulse{0%{transform:scale(.7);opacity:.9;border-color:#5ac8fa}100%{transform:scale(2);opacity:0;border-color:#30d158}}
+
+/* haptic pip from finger */
+.pip{position:absolute;border-radius:50%;border:2px solid;transform:translate(-50%,-50%) scale(.35);opacity:0;width:22px;height:22px;z-index:45;}
+.pip.go{animation:pipgo .6s cubic-bezier(.2,.6,.4,1);}
+@keyframes pipgo{0%{transform:translate(-50%,-50%) scale(.35);opacity:.92}100%{transform:translate(-50%,-50%) scale(3.4);opacity:0}}
+
+/* big floating badge */
+.fbadge{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) scale(0);font-size:14px;font-weight:800;padding:9px 20px;border-radius:100px;z-index:60;white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.5);}
+.fbadge.show{animation:fbpop .55s cubic-bezier(.34,1.6,.64,1) forwards;}
+@keyframes fbpop{0%{transform:translate(-50%,-50%) scale(0)}70%{transform:translate(-50%,-50%) scale(1.12)}100%{transform:translate(-50%,-50%) scale(1)}}
+.fbadge.copy{background:linear-gradient(135deg,#5ac8fa,#0a84ff);color:#04141a;}
+.fbadge.paste{background:linear-gradient(135deg,#5edc85,#30d158);color:#04140a;}
+.fbadge.done{background:linear-gradient(135deg,#5edc85,#30d158);color:#04140a;}
+
+/* keyboard (visual only, keys light up as finger touches space) */
+.kbd{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,#1d1d20,#161619);border-top:.5px solid rgba(255,255,255,.06);padding:9px 5px 14px;}
+.krow{display:flex;gap:5px;justify-content:center;margin-bottom:7px;}
+.krow:last-child{margin-bottom:0;}
+.key{flex:1;max-width:30px;height:38px;background:linear-gradient(180deg,#67676b,#5a5a5e);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;box-shadow:0 1px 1px rgba(0,0,0,.6);}
+.key.fn{max-width:40px;font-size:12px;background:linear-gradient(180deg,#3c3c40,#343438);}
+.spacebar{flex:1;height:42px;border-radius:8px;background:linear-gradient(180deg,#67676b,#5a5a5e);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:rgba(255,255,255,.55);box-shadow:0 1px 1px rgba(0,0,0,.6);position:relative;overflow:visible;transition:box-shadow .25s,background .25s;}
+.spacebar.m-cursor{background:linear-gradient(180deg,#0a84ff,#0a6fd6);box-shadow:0 0 24px rgba(10,132,255,.7);color:#fff;}
+.spacebar.m-select{background:linear-gradient(180deg,#34d058,#28b44b);box-shadow:0 0 24px rgba(48,209,88,.75);color:#fff;}
+.spacebar.m-paste{background:linear-gradient(180deg,#ff453a,#dc372d);box-shadow:0 0 24px rgba(255,69,58,.7);color:#fff;}
+.kcaption{position:absolute;left:0;right:0;top:-30px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;color:#fff;opacity:0;transition:opacity .2s;}
+.kcaption.show{opacity:1;}
+
+/* film scrim + replay */
+.scrim{position:absolute;inset:0;z-index:70;background:rgba(6,6,10,.78);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .4s;text-align:center;padding:0 30px;}
+.scrim.hide{opacity:0;pointer-events:none;}
+.scrim .pulse{width:74px;height:74px;border-radius:50%;background:linear-gradient(135deg,#0a84ff,#5e5ce6);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 12px 36px rgba(10,132,255,.5);animation:bob 2s ease-in-out infinite;}
+.scrim .st{font-size:16px;font-weight:700;}
+.scrim .ss{font-size:12px;color:var(--muted);line-height:1.5;max-width:240px;}
+
+/* track row under phone */
+.tray{max-width:360px;margin:16px auto 0;}
+.cmp{display:flex;gap:11px;}
+.cmpc{flex:1;padding:12px 13px;border-radius:14px;border:.5px solid var(--line);text-align:center;transition:all .35s;opacity:.5;}
+.cmpc.act{opacity:1;}
+.cmpc.classic{background:linear-gradient(180deg,rgba(255,69,58,.06),transparent);}
+.cmpc.classic.act{border-color:rgba(255,69,58,.35);background:linear-gradient(180deg,rgba(255,69,58,.12),transparent);}
+.cmpc.po{background:linear-gradient(180deg,rgba(48,209,88,.06),transparent);}
+.cmpc.po.act{border-color:rgba(48,209,88,.4);background:linear-gradient(180deg,rgba(48,209,88,.14),transparent);}
+.cmpc .nm{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+.cmpc.classic .nm{color:#ff8077;}.cmpc.po .nm{color:#5edc85;}
+.cmpc .tm{font-size:22px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;margin-top:4px;}
+.cmpc .sx{font-size:9px;color:var(--faint);margin-top:2px;}
+.playbtn{display:block;margin:15px auto 0;padding:13px 34px;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(180deg,#0a84ff,#0066d6);border:none;border-radius:100px;box-shadow:0 10px 28px rgba(10,132,255,.42);cursor:pointer;transition:transform .12s;}
+.playbtn:active{transform:scale(.96);}
+.haptnote{text-align:center;font-size:10px;color:var(--faint);margin-top:11px;line-height:1.5;}
+
+/* haptics / moat / exits / plats / footer (compact, reused) */
+.haps{margin-top:20px;display:flex;flex-direction:column;gap:9px;}
+.hap{display:flex;align-items:center;gap:13px;padding:15px 16px;background:var(--card);border:.5px solid var(--line);border-radius:17px;transition:all .35s;cursor:pointer;}
+.hap.lit-1{background:rgba(10,132,255,.1);border-color:rgba(10,132,255,.42);transform:scale(1.02);}
+.hap.lit-2{background:rgba(48,209,88,.1);border-color:rgba(48,209,88,.42);transform:scale(1.02);}
+.hap.lit-3{background:rgba(90,200,250,.1);border-color:rgba(90,200,250,.42);transform:scale(1.02);}
+.hap.lit-4{background:rgba(255,69,58,.1);border-color:rgba(255,69,58,.42);transform:scale(1.02);}
+.hbadge{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.hbadge.b1{background:rgba(10,132,255,.15);color:var(--blue);border:1px solid rgba(10,132,255,.4);}
+.hbadge.b2{background:rgba(48,209,88,.15);color:var(--green);border:1px solid rgba(48,209,88,.4);}
+.hbadge.b3{background:rgba(90,200,250,.15);color:var(--cyan);border:1px solid rgba(90,200,250,.4);}
+.hbadge.b4{background:rgba(255,69,58,.15);color:var(--red);border:1px solid rgba(255,69,58,.4);}
+.hname{font-size:13px;font-weight:700;}
+.hdesc{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4;}
+.hwave{display:flex;gap:2.5px;align-items:flex-end;margin-left:auto;flex-shrink:0;}
+.hbar{width:3.5px;border-radius:2px;background:rgba(255,255,255,.25);transition:background .35s;}
+.hap.lit-1 .hbar{background:var(--blue);}.hap.lit-2 .hbar{background:var(--green);}
+.hap.lit-3 .hbar{background:var(--cyan);}.hap.lit-4 .hbar{background:var(--red);}
+.moat{margin-top:20px;display:flex;flex-direction:column;gap:10px;}
+.mrow{display:flex;align-items:flex-start;gap:12px;padding:15px 16px;border-radius:16px;border:.5px solid var(--line);background:var(--card);}
+.mrow.owned{background:linear-gradient(180deg,rgba(255,69,58,.05),transparent);border-color:rgba(255,69,58,.18);}
+.mrow.open{background:linear-gradient(180deg,rgba(48,209,88,.07),transparent);border-color:rgba(48,209,88,.3);}
+.mdot{width:9px;height:9px;border-radius:50%;margin-top:4px;flex-shrink:0;}
+.mrow.owned .mdot{background:var(--red);}
+.mrow.open .mdot{background:var(--green);box-shadow:0 0 10px var(--green);}
+.mtext{font-size:12.5px;line-height:1.45;}.mtext b{font-weight:700;}
+.mtag{font-size:8.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);margin-top:4px;}
+.mrow.open .mtag{color:#5edc85;}
+.exits{margin-top:20px;display:flex;flex-direction:column;gap:8px;}
+.exit{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:14px;background:var(--card);border:.5px solid var(--line);}
+.exit.po{background:linear-gradient(90deg,rgba(48,209,88,.08),transparent);border-color:rgba(48,209,88,.3);}
+.exit .en{font-size:12.5px;font-weight:600;flex:1;}
+.exit .ed{font-size:8.5px;color:var(--faint);margin-top:2px;}
+.exit .ep{font-size:14px;font-weight:800;letter-spacing:-.3px;}
+.exit.po .ep{color:#5edc85;}
+.plats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px;}
+.plat{padding:17px 8px;background:var(--card);border:.5px solid var(--line);border-radius:17px;text-align:center;}
+.plat .pi{font-size:23px;}.plat .pn{font-size:10px;font-weight:700;margin-top:8px;}.plat .ps{font-size:8px;color:var(--faint);margin-top:2px;}
+.footer{margin-top:60px;padding-bottom:calc(env(safe-area-inset-bottom) + 54px);text-align:center;}
+.fcard{padding:30px 24px;background:linear-gradient(180deg,rgba(10,132,255,.11),rgba(94,92,230,.05));border:.5px solid rgba(10,132,255,.28);border-radius:26px;}
+.ftitle{font-size:23px;font-weight:800;letter-spacing:-.9px;line-height:1.15;}
+.fsub{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.6;}.fsub b{color:var(--ink);}
+.fcta{display:inline-block;margin-top:20px;padding:13px 30px;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(180deg,#0a84ff,#0066d6);border-radius:100px;text-decoration:none;box-shadow:0 10px 28px rgba(10,132,255,.4);}
+.fmeta{margin-top:24px;font-size:11px;color:var(--faint);line-height:1.85;}.fmeta b{color:rgba(245,245,247,.8);}
+
+/* ─── INTERACTIVE TESTER ─── */
+.tester{margin-top:22px;background:linear-gradient(180deg,#0e0e13,#08080c);border:.5px solid var(--line);border-radius:26px;overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,.55);}
+.tester .thead{display:flex;align-items:center;justify-content:space-between;padding:13px 17px;border-bottom:.5px solid rgba(255,255,255,.07);}
+.tester .tt{font-size:13px;font-weight:700;}
+.tpill{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.8px;padding:5px 12px;border-radius:100px;border:1px solid #3a3a3c;color:var(--faint);transition:all .25s;}
+.tpill .d{width:6px;height:6px;border-radius:50%;background:#3a3a3c;transition:all .25s;}
+.tpill.cursor{border-color:var(--blue);color:var(--blue);}.tpill.cursor .d{background:var(--blue);box-shadow:0 0 8px var(--blue);}
+.tpill.select{border-color:var(--green);color:var(--green);}.tpill.select .d{background:var(--green);box-shadow:0 0 8px var(--green);}
+.tpill.paste{border-color:var(--red);color:var(--red);}.tpill.paste .d{background:var(--red);box-shadow:0 0 8px var(--red);}
+.tpill.ready{border-color:var(--cyan);color:var(--cyan);}.tpill.ready .d{background:var(--cyan);box-shadow:0 0 8px var(--cyan);}
+.tbody{padding:16px 16px 18px;}
+.ted{background:rgba(255,255,255,.045);border:.5px solid var(--line);border-radius:14px;padding:14px;font-size:16.5px;line-height:1.78;min-height:120px;white-space:pre-wrap;word-break:break-word;}
+.ted .ch{border-radius:3px;transition:background .1s;}
+.ted .ch.sel{background:rgba(48,209,88,.42);box-shadow:0 -2px 0 rgba(48,209,88,.4),0 2px 0 rgba(48,209,88,.4);}
+.ted .ch.cur{background:rgba(10,132,255,.3);}
+.ted .ch.pop{animation:tpop .7s cubic-bezier(.34,1.5,.64,1);color:#ff9f93;}
+@keyframes tpop{0%{opacity:0;filter:blur(4px);background:rgba(255,69,58,.4)}100%{opacity:1;filter:blur(0);background:transparent}}
+.ted .ch.cflash{animation:tcflash .85s cubic-bezier(.3,.7,.3,1);}
+@keyframes tcflash{0%{background:rgba(48,209,88,.42)}25%{background:rgba(90,200,250,.85);color:#04141a;transform:translateY(-2px)}45%{transform:translateY(0)}55%{transform:translateX(-1px)}70%{transform:translateX(1.4px)}85%{transform:translateX(-.8px)}100%{background:transparent;color:inherit;transform:none}}
+.tcaret{display:inline-block;width:2px;height:1.1em;background:var(--blue);vertical-align:text-bottom;margin:0 -1px;border-radius:1px;box-shadow:0 0 7px rgba(10,132,255,.9);animation:blink .8s step-end infinite;position:relative;top:3px;}
+.tcaret.red{background:var(--red);box-shadow:0 0 7px rgba(255,69,58,.9);}
+.tclip{display:flex;align-items:center;gap:9px;margin-top:12px;padding:9px 13px;background:rgba(90,200,250,.07);border:.5px solid rgba(90,200,250,.2);border-radius:13px;transition:all .3s;}
+.tclip.empty{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.08);}
+.tclip .ct{font-size:11.5px;color:var(--cyan);font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tclip.empty .ct{color:var(--faint);}
+.tclip .cx{font-size:11px;font-weight:700;color:var(--muted);padding:2px 9px;border-radius:100px;background:rgba(255,255,255,.08);cursor:pointer;display:none;}
+.tclip:not(.empty) .cx{display:block;}
+.tkbd{margin-top:14px;background:linear-gradient(180deg,#1d1d20,#161619);border-radius:14px;padding:8px 5px 10px;}
+.tkrow{display:flex;gap:5px;justify-content:center;margin-bottom:6px;}
+.tkrow:last-child{margin-bottom:0;}
+.tkey{flex:1;max-width:32px;height:40px;background:linear-gradient(180deg,#67676b,#5a5a5e);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;box-shadow:0 1px 1px rgba(0,0,0,.6);cursor:pointer;transition:transform .07s,background .08s;}
+.tkey:active,.tkey.flash{background:#9a9a9e;transform:scale(.93);}
+.tkey.fn{max-width:42px;font-size:12px;background:linear-gradient(180deg,#3c3c40,#343438);}
+.tkey.fn.lit{background:linear-gradient(180deg,rgba(10,132,255,.7),rgba(10,100,220,.5));}
+.tspace{flex:1;height:44px;border-radius:8px;background:linear-gradient(180deg,#67676b,#5a5a5e);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:rgba(255,255,255,.6);box-shadow:0 1px 1px rgba(0,0,0,.6);position:relative;overflow:visible;cursor:pointer;touch-action:none;transition:box-shadow .25s,background .25s;}
+.tspace.m-cursor{background:linear-gradient(180deg,#0a84ff,#0a6fd6);box-shadow:0 0 24px rgba(10,132,255,.7);color:#fff;}
+.tspace.m-select{background:linear-gradient(180deg,#34d058,#28b44b);box-shadow:0 0 24px rgba(48,209,88,.75);color:#fff;}
+.tspace.m-paste{background:linear-gradient(180deg,#ff453a,#dc372d);box-shadow:0 0 24px rgba(255,69,58,.7);color:#fff;}
+.ttrail{position:absolute;top:50%;left:50%;height:3px;border-radius:2px;background:rgba(255,255,255,.65);transform:translateY(-50%);width:0;opacity:0;pointer-events:none;}
+.tripple{position:absolute;border-radius:50%;border:2.5px solid #fff;pointer-events:none;transform:translate(-50%,-50%) scale(.3);opacity:0;width:24px;height:24px;}
+.tripple.go{animation:rip .55s cubic-bezier(.2,.6,.4,1) forwards;}
+@keyframes rip{0%{transform:translate(-50%,-50%) scale(.3);opacity:.95}100%{transform:translate(-50%,-50%) scale(3.8);opacity:0}}
+.tripple.h1{border-color:var(--blue);}.tripple.h2{border-color:var(--green);border-width:3px;}
+.tripple.h3{border-color:var(--cyan);}.tripple.h4{border-color:var(--red);border-width:3px;}
+.tflash{position:absolute;top:-36px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:800;letter-spacing:1px;padding:6px 14px;border-radius:100px;background:rgba(0,0,0,.9);border:1px solid;white-space:nowrap;opacity:0;pointer-events:none;z-index:60;}
+.tflash.show{animation:hf 1.05s ease forwards;}
+@keyframes hf{0%{opacity:0;transform:translateX(-50%) translateY(7px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-9px)}}
+.tcoach{display:flex;align-items:center;gap:10px;margin-top:13px;padding:12px 16px;background:var(--card);border:.5px solid var(--line);border-radius:16px;min-height:46px;transition:all .3s;}
+.tcoach .cd{width:7px;height:7px;border-radius:50%;background:var(--blue);flex-shrink:0;animation:beat 1.5s ease-in-out infinite;}
+.tcoach .cx{font-size:12.5px;font-weight:500;color:rgba(245,245,247,.9);line-height:1.4;}
+.tcoach.ok{background:rgba(48,209,88,.1);border-color:rgba(48,209,88,.35);}
+.tcoach.ok .cd{background:var(--green);}
+.tseg{display:flex;gap:6px;justify-content:center;margin-top:14px;}
+.tsegbtn{padding:8px 15px;font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border:.5px solid var(--line);border-radius:100px;cursor:pointer;transition:all .2s;}
+.tsegbtn.on{color:#fff;background:rgba(10,132,255,.22);border-color:var(--blue);}
+.treset{display:block;margin:13px auto 0;padding:9px 22px;font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border:.5px solid var(--line);border-radius:100px;cursor:pointer;}
+
+
+/* tester mode banner */
+.tbanner{display:flex;align-items:center;gap:10px;margin-bottom:11px;padding:11px 15px;border-radius:13px;border:1px solid var(--line);background:rgba(255,255,255,.04);transition:all .3s;}
+.tbanner .ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;font-weight:800;background:rgba(255,255,255,.08);transition:all .3s;}
+.tbanner .bt{font-size:13px;font-weight:800;letter-spacing:.2px;transition:color .3s;}
+.tbanner .bs{font-size:10.5px;color:var(--muted);margin-top:1px;line-height:1.3;}
+.tbanner.idle .ic{background:rgba(255,255,255,.08);}
+.tbanner.cursor{background:linear-gradient(90deg,rgba(10,132,255,.14),rgba(10,132,255,.03));border-color:rgba(10,132,255,.45);}
+.tbanner.cursor .ic{background:var(--blue);color:#fff;}.tbanner.cursor .bt{color:#5aa9ff;}
+.tbanner.select{background:linear-gradient(90deg,rgba(48,209,88,.14),rgba(48,209,88,.03));border-color:rgba(48,209,88,.5);}
+.tbanner.select .ic{background:var(--green);color:#04140a;}.tbanner.select .bt{color:#5edc85;}
+.tbanner.ready{background:linear-gradient(90deg,rgba(90,200,250,.14),rgba(90,200,250,.03));border-color:rgba(90,200,250,.5);}
+.tbanner.ready .ic{background:var(--cyan);color:#04141a;}.tbanner.ready .bt{color:#7ad4fb;}
+.tbanner.paste{background:linear-gradient(90deg,rgba(255,69,58,.14),rgba(255,69,58,.03));border-color:rgba(255,69,58,.5);}
+.tbanner.paste .ic{background:var(--red);color:#fff;}.tbanner.paste .bt{color:#ff8077;}
+/* step ladder */
+.tladder{display:flex;gap:5px;margin-bottom:12px;}
+.tstep{flex:1;text-align:center;font-size:8.5px;font-weight:700;letter-spacing:.2px;padding:6px 3px;border-radius:8px;background:rgba(255,255,255,.04);border:.5px solid var(--line);color:var(--faint);transition:all .3s;line-height:1.25;}
+.tstep.on{color:#fff;}
+.tstep.s1.on{background:rgba(10,132,255,.2);border-color:var(--blue);color:#5aa9ff;}
+.tstep.s2.on{background:rgba(48,209,88,.2);border-color:var(--green);color:#5edc85;}
+.tstep.s3.on{background:rgba(90,200,250,.2);border-color:var(--cyan);color:#7ad4fb;}
+.tstep.s4.on{background:rgba(255,69,58,.2);border-color:var(--red);color:#ff8077;}
+.tstep .sn{display:block;font-size:13px;margin-bottom:1px;}
+/* force ring for tester */
+.tspace .forcewrap{position:absolute;inset:0;border-radius:8px;overflow:hidden;pointer-events:none;}
+.tspace .forcefill{position:absolute;inset:0;background:radial-gradient(circle at center,rgba(255,255,255,.5),transparent 70%);opacity:0;transform:scale(.4);transition:opacity .1s;}
+.tspace.forcing .forcefill{opacity:.6;transform:scale(1);transition:opacity .5s,transform .5s;}
+.tspace .forcehint{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:8px;font-weight:700;color:rgba(255,255,255,.8);background:rgba(0,0,0,.35);padding:2px 7px;border-radius:100px;opacity:0;transition:opacity .25s;}
+.tspace.m-paste .forcehint{opacity:1;}
+
+</style>
+</head>
+<body>
+<div class="aurora"><i></i></div>
+<div class="grain"></div>
+<!-- HERO -->
+<div class="wrap hero">
+  <div class="kicker"><span class="led"></span>PATENT PENDING · 2026 · TBILISI 🇬🇪</div>
+  <h1>The clipboard,<br><span class="g">reinvented.</span></h1>
+  <p class="lede">Select, copy and paste with <b>one finger on one key</b>.<br>No menus. No handles. No second tap wasted.</p>
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-n">6→2</div><div class="kpi-l">Actions</div></div>
+    <div class="kpi"><div class="kpi-n">2→0</div><div class="kpi-l">Menus</div></div>
+    <div class="kpi"><div class="kpi-n">3×</div><div class="kpi-l">Faster</div></div>
+  </div>
+  <div class="scrollcue">↓ &nbsp;watch it live &nbsp;↓</div>
+</div>
+
+<!-- DEMO -->
+<div class="wrap">
+  <div class="head reveal">
+    <div class="eyebrow">Live demo · plays itself</div>
+    <div class="title">See <em>PressOff</em> work</div>
+    <div class="sub">Same task on both: <b>copy a name, paste it below</b>.<br>Watch the highlight, the copy-pulse, and the haptic taps.</div>
+  </div>
+
+  <div class="stage reveal">
+    <div class="phone">
+      <div class="pglow"></div>
+      <div class="screen" id="screen">
+        <div class="notch"></div>
+        <div class="sbar"><span>9:41</span><span class="r">●●● &nbsp;5G &nbsp;100%</span></div>
+        <div class="appbar">
+          <span class="back">‹ Notes</span>
+          <span class="tbox"><span class="at" id="appTitle">Note</span><br><span class="am" id="appMode">— PLAYING —</span></span>
+          <span class="dots">⋯</span>
+        </div>
+
+        <div class="doc" id="doc"></div>
+
+        <!-- overlays -->
+        <div class="handle s" id="hStart"></div>
+        <div class="handle e" id="hEnd"></div>
+        <div class="fmenu" id="menuCopy"><span class="mi">Cut</span><span class="mi hot" id="miCopy">Copy</span><span class="mi">Look&nbsp;Up</span></div>
+        <div class="fmenu" id="menuPaste"><span class="mi">Select</span><span class="mi hot" id="miPaste">Paste</span></div>
+        <div class="pip" id="pip"></div>
+        <div class="finger" id="finger"><span class="ring"></span><span class="forcering"></span></div>
+        <div class="fbadge" id="fbadge"></div>
+
+        <div class="kbd" id="kbd">
+          <div class="kcaption" id="kcap"></div>
+          <div class="krow"><div class="key">q</div><div class="key">w</div><div class="key">e</div><div class="key">r</div><div class="key">t</div><div class="key">y</div><div class="key">u</div><div class="key">i</div><div class="key">o</div><div class="key">p</div></div>
+          <div class="krow"><div class="key">a</div><div class="key">s</div><div class="key">d</div><div class="key">f</div><div class="key">g</div><div class="key">h</div><div class="key">j</div><div class="key">k</div><div class="key">l</div></div>
+          <div class="krow"><div class="key fn">⇧</div><div class="key">z</div><div class="key">x</div><div class="key">c</div><div class="key">v</div><div class="key">b</div><div class="key">n</div><div class="key">m</div><div class="key fn">⌫</div></div>
+          <div class="krow"><div class="key fn">123</div><div class="spacebar" id="spacebar">space</div><div class="key fn">↩</div></div>
+        </div>
+
+        <div class="scrim" id="scrim">
+          <div class="pulse">▶</div>
+          <div class="st">Tap to play the demo</div>
+          <div class="ss">Watch PressOff vs the classic way — side by side, automatically.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tray reveal">
+    <div class="cmp">
+      <div class="cmpc classic" id="cmpC"><div class="nm">Classic</div><div class="tm" id="tmC">6.5s</div><div class="sx">6 steps · 2 menus</div></div>
+      <div class="cmpc po" id="cmpP"><div class="nm">PressOff</div><div class="tm" id="tmP">2.1s</div><div class="sx">2 gestures · 0 menus</div></div>
+    </div>
+    <button class="playbtn" id="playBtn">▶ &nbsp;Play demo</button>
+    <div class="haptnote">📳 Real haptic feedback fires on supported devices (Android). On iPhone, watch the on-screen pulse — Apple reserves system haptics for first-party apps, which is exactly what licensing PressOff unlocks.</div>
+  </div>
+</div>
+
+
+<!-- INTERACTIVE TESTER -->
+<div class="wrap">
+  <div class="head reveal">
+    <div class="eyebrow">Now your turn · hands-on</div>
+    <div class="title">Test it <em>yourself</em></div>
+    <div class="sub">The keys really type. <b>Tap space = a space.</b><br><b>Press 1</b> + slide = cursor · <b>Press 2</b> + slide = select · <b>lift = copy</b> · press + slide + lift = paste.</div>
+  </div>
+
+  <div class="tseg reveal">
+    <button class="tsegbtn on" data-s="0">📝 Note</button>
+    <button class="tsegbtn" data-s="1">💬 Chat</button>
+    <button class="tsegbtn" data-s="2">🇬🇪 ქართული</button>
+  </div>
+
+  <div class="tester reveal">
+    <div class="thead">
+      <span class="tt" id="tAppTitle">📝 Notes</span>
+      <span class="tpill" id="tPill"><span class="d"></span><span id="tPillTxt">IDLE</span></span>
+    </div>
+    <div class="tbody">
+      <div class="tbanner idle" id="tBanner">
+        <div class="ic" id="tBanIc">●</div>
+        <div><div class="bt" id="tBanT">Ready</div><div class="bs" id="tBanS">Press &amp; slide the spacebar to begin</div></div>
+      </div>
+      <div class="tladder">
+        <div class="tstep s1" id="tS1"><span class="sn">1</span>PRESS·slide<br>cursor</div>
+        <div class="tstep s2" id="tS2"><span class="sn">2</span>PRESS·slide<br>select</div>
+        <div class="tstep s3" id="tS3"><span class="sn">☝</span>LIFT<br>copy</div>
+        <div class="tstep s4" id="tS4"><span class="sn">⤓</span>press·LIFT<br>paste</div>
+      </div>
+      <div class="ted" id="tEd"></div>
+      <div class="tclip empty" id="tClip"><span>📋</span><span class="ct" id="tClipTxt">Clipboard empty</span><span class="cx" id="tClipX">clear ✕</span></div>
+      <div class="tkbd" id="tKbd">
+        <div class="tkrow" id="tRow0"></div>
+        <div class="tkrow" id="tRow1"></div>
+        <div class="tkrow" id="tRow2"></div>
+        <div class="tkrow">
+          <div class="tkey fn" id="tLay">123</div>
+          <div class="tspace" id="tSpace"><div class="forcewrap"><div class="forcefill"></div></div><span id="tSpaceLbl">tap = space · press & slide = cursor</span><span class="forcehint">↓ hold = force-press paste</span><div class="ttrail" id="tTrail"></div><div class="tflash" id="tFlash"></div></div>
+          <div class="tkey fn" id="tRet">↩</div>
+        </div>
+      </div>
+      <div class="tcoach" id="tCoach"><span class="cd"></span><span class="cx" id="tCoachTxt"><b>Step 1:</b> press the spacebar and slide — the cursor follows your finger</span></div>
+      <button class="treset" id="tReset">↻ Reset text</button>
+    </div>
+  </div>
+</div>
+
+<!-- HAPTICS -->
+<div class="wrap">
+  <div class="head reveal">
+    <div class="eyebrow">An interaction language</div>
+    <div class="title">Your finger <em>always knows</em></div>
+    <div class="sub">Four distinct vibrations map to four states. <b>Tap a card to feel it.</b></div>
+  </div>
+  <div class="haps reveal">
+    <div class="hap" id="hapRow1"><div class="hbadge b1">H1</div><div><div class="hname">Soft tap</div><div class="hdesc">Cursor mode — the spacebar became a trackpad</div></div><div class="hwave"><div class="hbar" style="height:8px"></div><div class="hbar" style="height:5px"></div></div></div>
+    <div class="hap" id="hapRow2"><div class="hbadge b2">H2</div><div><div class="hname">Medium tap</div><div class="hdesc">Selection mode — anchor set, text highlighting</div></div><div class="hwave"><div class="hbar" style="height:12px"></div><div class="hbar" style="height:8px"></div><div class="hbar" style="height:12px"></div></div></div>
+    <div class="hap" id="hapRow3"><div class="hbadge b3">H3</div><div><div class="hname">Success rise</div><div class="hdesc">Copied — only the selected text pulses</div></div><div class="hwave"><div class="hbar" style="height:7px"></div><div class="hbar" style="height:13px"></div><div class="hbar" style="height:9px"></div><div class="hbar" style="height:5px"></div></div></div>
+    <div class="hap" id="hapRow4"><div class="hbadge b4">H4</div><div><div class="hname">Deep click</div><div class="hdesc">Pasted — by lift-off, or a force-press on trackpads</div></div><div class="hwave"><div class="hbar" style="height:9px"></div><div class="hbar" style="height:15px"></div><div class="hbar" style="height:11px"></div><div class="hbar" style="height:6px"></div><div class="hbar" style="height:4px"></div></div></div>
+  </div>
+</div>
+
+<!-- MOAT -->
+<div class="wrap">
+  <div class="head reveal">
+    <div class="eyebrow">Why this is defensible</div>
+    <div class="title">The <em>open lane</em></div>
+    <div class="sub">Adjacent gestures are patented. <b>This exact combination is not.</b></div>
+  </div>
+  <div class="moat reveal">
+    <div class="mrow owned"><span class="mdot"></span><div><div class="mtext">Two-finger drag on keyboard → selection</div><div class="mtag">US 9,785,305 B2 · 2017</div></div></div>
+    <div class="mrow owned"><span class="mdot"></span><div><div class="mtext">Lift-off as a mode-switch with a second finger</div><div class="mtag">US 8,479,122 B2 · 2013</div></div></div>
+    <div class="mrow owned"><span class="mdot"></span><div><div class="mtext">Firm press → floating menu (3D Touch)</div><div class="mtag">discontinued 2019</div></div></div>
+    <div class="mrow open"><span class="mdot"></span><div><div class="mtext"><b>One finger, sequential light press on a single key → lift-off = clipboard write, zero menus.</b></div><div class="mtag">PressOff · Patent Pending 2026 · this gap is real</div></div></div>
+  </div>
+</div>
+
+<!-- EXITS -->
+<div class="wrap">
+  <div class="head reveal">
+    <div class="eyebrow">This category gets acquired</div>
+    <div class="title">Input methods <em>exit</em></div>
+  </div>
+  <div class="exits reveal">
+    <div class="exit"><div><div class="en">Swype</div><div class="ed">gesture typing → Nuance · 2011</div></div><div class="ep">$102.5M</div></div>
+    <div class="exit"><div><div class="en">SwiftKey</div><div class="ed">predictive keyboard → Microsoft · 2016</div></div><div class="ep">~$250M</div></div>
+    <div class="exit"><div><div class="en">FingerWorks</div><div class="ed">multitouch → Apple · 2005 · became iPhone</div></div><div class="ep">~$25M</div></div>
+    <div class="exit po"><div><div class="en">PressOff</div><div class="ed">single-finger clipboard · 0 menus · all platforms</div></div><div class="ep">TBD</div></div>
+  </div>
+</div>
+
+<!-- PLATFORMS -->
+<div class="wrap">
+  <div class="head reveal">
+    <div class="eyebrow">One method · every surface</div>
+    <div class="title">Built for <em>everything</em></div>
+  </div>
+  <div class="plats reveal">
+    <div class="plat"><div class="pi">📱</div><div class="pn">iPhone</div><div class="ps">software keyboard</div></div>
+    <div class="plat"><div class="pi">🤖</div><div class="pn">Android</div><div class="ps">software keyboard</div></div>
+    <div class="plat"><div class="pi">📲</div><div class="pn">Tablets</div><div class="ps">iPad · Galaxy Tab</div></div>
+    <div class="plat"><div class="pi">💻</div><div class="pn">MacBook</div><div class="ps">Force-press paste · v2</div></div>
+    <div class="plat"><div class="pi">🖥️</div><div class="pn">Trackpads</div><div class="ps">Windows Precision</div></div>
+    <div class="plat"><div class="pi">🚗</div><div class="pn">Auto · IoT</div><div class="ps">any touch surface</div></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="wrap footer">
+  <div class="fcard reveal">
+    <div class="ftitle">One gesture.<br>Every keyboard on earth.</div>
+    <div class="fsub">PressOff replaces the 2007-era clipboard with a single fluid motion — <b>patented, demonstrated, ready to license</b>.</div>
+    <a class="fcta" href="mailto:vakhtanggogichashvili@gmail.com?subject=PressOff%20—%20licensing%20enquiry">Request the deck →</a>
+    <div class="fmeta">
+      <b>Vakhtang Gogichashvili</b> 🇬🇪<br>Inventor · PressOff v1 &amp; v2<br>
+      Patent Pending — Sakpatenti + USPTO · 2026<br>vakhtanggogichashvili@gmail.com
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* reveal */
+var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}});},{threshold:.12});
+document.querySelectorAll(".reveal").forEach(function(el){io.observe(el);});
+
+/* ───── nodes ───── */
+var doc=document.getElementById("doc"), finger=document.getElementById("finger"),
+    hStart=document.getElementById("hStart"), hEnd=document.getElementById("hEnd"),
+    menuCopy=document.getElementById("menuCopy"), menuPaste=document.getElementById("menuPaste"),
+    miCopy=document.getElementById("miCopy"), miPaste=document.getElementById("miPaste"),
+    pip=document.getElementById("pip"), fbadge=document.getElementById("fbadge"),
+    spacebar=document.getElementById("spacebar"), kcap=document.getElementById("kcap"),
+    appMode=document.getElementById("appMode"), appTitle=document.getElementById("appTitle"),
+    scrim=document.getElementById("scrim"), screen=document.getElementById("screen"),
+    playBtn=document.getElementById("playBtn"),
+    cmpC=document.getElementById("cmpC"), cmpP=document.getElementById("cmpP"),
+    tmC=document.getElementById("tmC"), tmP=document.getElementById("tmP");
+
+/* document model: tokens. The name "Vakhtang" (id W) gets selected+copied; "▯" target gets the paste */
+/* We render two lines. Line1 holds the source sentence; line2 is the paste target. */
+var TOKENS = [
+  {t:"Copy ",k:"plain"},
+  {t:"Vakhtang",k:"name"},      // <- the word to select & copy
+  {t:" 🇬🇪",k:"plain"},
+  {t:"\n",k:"br"},
+  {t:"Paste here → ",k:"plain"},
+  {t:"▯",k:"target"}            // <- paste destination
+];
+function build(){
+  doc.innerHTML="";
+  TOKENS.forEach(function(tok,i){
+    if(tok.k==="br"){ doc.appendChild(document.createTextNode("\n")); return; }
+    var s=document.createElement("span");
+    s.className="w"; s.dataset.i=i; s.textContent=tok.t;
+    doc.appendChild(s);
+  });
+}
+function W(i){ return doc.querySelector('.w[data-i="'+i+'"]'); }
+function center(node){
+  var p=screen.getBoundingClientRect(), n=node.getBoundingClientRect();
+  return {x:n.left-p.left+n.width/2, y:n.top-p.top+n.height/2,
+          x0:n.left-p.left, x1:n.right-p.left, top:n.top-p.top, bot:n.bottom-p.top};
+}
+
+/* ───── helpers ───── */
+var TOs=[], IVs=[], playing=false;
+function at(ms,fn){ TOs.push(setTimeout(fn,ms)); }
+function clearAll(){ TOs.forEach(function(t){ if(t&&t.stop)t.stop(); else clearTimeout(t); }); TOs=[]; IVs.forEach(clearInterval); IVs=[]; }
+function vib(p){ try{ navigator.vibrate && navigator.vibrate(p); }catch(e){} }
+
+function setFinger(x,y){ finger.style.left=x+"px"; finger.style.top=y+"px"; }
+function fingerShow(){ finger.classList.add("show"); }
+function fingerHide(){ finger.classList.remove("show","press","force","tap","forcepulse"); }
+function press(on){ finger.classList.toggle("press",on); }
+function tap(){ finger.classList.remove("tap"); void finger.offsetWidth; finger.classList.add("tap"); }
+function force(on){ finger.classList.toggle("force",on); if(on){ finger.classList.remove("forcepulse"); void finger.offsetWidth; finger.classList.add("forcepulse"); } }
+
+function firePip(x,y,color){ pip.style.left=x+"px"; pip.style.top=y+"px"; pip.style.borderColor=color; pip.classList.remove("go"); void pip.offsetWidth; pip.classList.add("go"); }
+function badge(cls,txt){ fbadge.className="fbadge "+cls; fbadge.textContent=txt; fbadge.classList.remove("show"); void fbadge.offsetWidth; fbadge.classList.add("show"); at(1400,function(){ fbadge.classList.remove("show"); }); }
+function mode(m,label){ appMode.className="am "+m; appMode.textContent=label; }
+function sbMode(m){ spacebar.className="spacebar "+(m?("m-"+m):""); }
+function caption(txt){ kcap.textContent=txt; kcap.classList.add("show"); }
+function captionOff(){ kcap.classList.remove("show"); }
+
+/* haptic = visual pip + real vibrate + haptic-card light */
+var HV={h1:[15,"#0a84ff",1],h2:[[20,30,20],"#30d158",2],h3:[[15,40,15,40,30],"#5ac8fa",3],h4:[[60,40,90],"#ff453a",4]};
+function haptic(k,x,y){
+  var h=HV[k]; vib(h[0]); if(x!=null) firePip(x,y,h[1]);
+  var row=document.getElementById("hapRow"+h[2]);
+  if(row){ row.classList.add("lit-"+h[2]); setTimeout(function(){ row.classList.remove("lit-"+h[2]); },800); }
+}
+
+/* reset everything to clean slate */
+function resetScene(){
+  clearAll(); build();
+  fingerHide(); setFinger(-50,-50);
+  hStart.classList.remove("show"); hEnd.classList.remove("show");
+  menuCopy.classList.remove("show"); menuPaste.classList.remove("show");
+  miCopy.classList.remove("tapped"); miPaste.classList.remove("tapped");
+  fbadge.classList.remove("show");
+  sbMode(""); captionOff();
+  cmpC.classList.remove("act"); cmpP.classList.remove("act");
+  tmC.textContent="6.5s"; tmP.textContent="2.1s";
+}
+
+/* live timer for a card */
+function runTimer(elT, total, cardEl){
+  cardEl.classList.add("act");
+  var start=Date.now();
+  var iv=setInterval(function(){
+    var el=Date.now()-start;
+    elT.textContent=(Math.min(el,total)/1000).toFixed(1)+"s";
+    if(el>=total){ clearInterval(iv); elT.textContent=(total/1000).toFixed(1)+"s"; }
+  },60);
+  IVs.push(iv);
+}
+
+/* ════════ ACT 1 — CLASSIC (the painful way) ════════ */
+function actClassic(done){
+  appTitle.textContent="Notes — classic copy-paste";
+  mode("","CLASSIC");
+  cmpC.classList.add("act"); tmC.textContent="0.0s";
+  runTimer(tmC,6500,cmpC);
+  var w=W(1);                       // "Vakhtang"
+  var rw=center(w);
+  fingerShow();
+  at(150,function(){ setFinger(rw.x, rw.y+30); caption("long-press a word"); });
+  at(650,function(){ setFinger(rw.x, rw.y); });
+  // long press
+  at(1400,function(){ press(true); tap(); w.classList.add("selected"); vib(25); mode("select","SELECTED"); });
+  at(1750,function(){
+    press(false);
+    var a=center(w);
+    hStart.style.left=a.x0+"px"; hStart.style.top=a.top+"px"; hStart.style.height=(a.bot-a.top)+"px";
+    hEnd.style.left=a.x1+"px"; hEnd.style.top=a.top+"px"; hEnd.style.height=(a.bot-a.top)+"px";
+    hStart.classList.add("show"); hEnd.classList.add("show");
+    caption("drag the two handles");
+  });
+  // fuss with handles
+  at(2400,function(){ setFinger(center(w).x0, center(w).y); press(true); });
+  at(2750,function(){ press(false); });
+  at(3250,function(){ setFinger(center(w).x1, center(w).y); press(true); });
+  at(3600,function(){ press(false); });
+  // menu → copy
+  at(4000,function(){
+    var a=center(w);
+    menuCopy.style.left=Math.max(8,Math.min(a.x-60, screen.clientWidth-130))+"px";
+    menuCopy.style.top=Math.max(40,a.top-46)+"px";
+    menuCopy.classList.add("show"); caption("aim for ‘Copy’");
+  });
+  at(4800,function(){ setFinger(center(w).x, center(w).top-30); });
+  at(5250,function(){ press(true); tap(); miCopy.classList.add("tapped"); vib(15); });
+  at(5550,function(){ press(false); menuCopy.classList.remove("show"); hStart.classList.remove("show"); hEnd.classList.remove("show"); w.classList.remove("selected"); mode("","COPIED"); caption("now tap the target"); });
+  // tap target → paste menu → paste
+  var tg=function(){ return center(W(5)); };
+  at(5900,function(){ var r=tg(); setFinger(r.x,r.y); press(true); tap(); vib(15); });
+  at(6150,function(){ press(false); var r=tg();
+    menuPaste.style.left=Math.max(8,Math.min(r.x-40,screen.clientWidth-110))+"px";
+    menuPaste.style.top=Math.max(40,r.top-46)+"px"; menuPaste.classList.add("show"); caption("aim for ‘Paste’"); });
+  at(6350,function(){ miPaste.classList.add("tapped"); });
+  at(6450,function(){ menuPaste.classList.remove("show"); var t=W(5); t.textContent="Vakhtang 🇬🇪"; });
+  at(6650,function(){ fingerHide(); captionOff(); mode("","DONE · 6 steps · 2 menus"); });
+  at(7100, done);
+}
+
+/* ════════ ACT 2 — PRESSOFF (the new way) ════════ */
+function actPressOff(done){
+  // reset doc + cards for the second run
+  build(); mode("","PRESSOFF"); appTitle.textContent="Notes — PressOff";
+  cmpP.classList.add("act"); tmP.textContent="0.0s";
+  runTimer(tmP,2100,cmpP);
+  var w=W(1), rw=function(){ return center(W(1)); };
+  var sb=center(spacebar);
+  fingerShow();
+
+  // PRESS 1 on spacebar → cursor mode (H1)
+  at(150,function(){ setFinger(sb.x-40, sb.y); caption("press the spacebar"); });
+  at(500,function(){ setFinger(sb.x-40, sb.y); press(true); tap(); sbMode("cursor"); mode("cursor","● CURSOR"); haptic("h1", sb.x-40, sb.y); });
+  // slide finger → caret travels to the word (cursor mode = blue highlight tracking)
+  at(850,function(){ caption("slide → cursor moves"); w.classList.add("selecting"); setFinger(sb.x+20, sb.y); });
+  at(1050,function(){ press(false); w.classList.remove("selecting"); });
+  // PRESS 2 → selection mode (H2) → slide selects the word (green highlight grows)
+  at(1250,function(){ setFinger(sb.x+20, sb.y); press(true); tap(); sbMode("select"); mode("select","● SELECT"); haptic("h2", sb.x+20, sb.y); caption("press again → select"); });
+  at(1500,function(){ w.classList.add("selected"); setFinger(sb.x+55, sb.y); });
+  // LIFT-OFF → COPY (H3): ONLY the selected word pulses + vibrates
+  at(1750,function(){
+    press(false); sbMode(""); mode("copy","● COPIED");
+    haptic("h3", sb.x+55, sb.y);
+    w.classList.remove("selected"); w.classList.add("copyflash");
+    badge("copy","COPIED ✓ — no menu");
+    caption("lift = COPY");
+  });
+  at(2050,function(){ w.classList.remove("copyflash"); });
+  done && at(2300, done);
+}
+
+/* ════════ ACT 3 — PASTE via force-touch (v2) ════════ */
+function actPaste(done){
+  mode("paste","● PASTE"); 
+  var sb=center(spacebar), tg=function(){ return center(W(5)); };
+  fingerShow();
+  // press spacebar → paste mode (H1), slide to position
+  at(150,function(){ setFinger(sb.x, sb.y); press(true); tap(); sbMode("paste"); haptic("h1", sb.x, sb.y); caption("press → paste mode"); });
+  at(450,function(){ press(false); setFinger(sb.x+30,sb.y); caption("slide to position"); });
+  // FORCE-PRESS to paste (v2) — deep press, green force ring, H4
+  at(800,function(){ setFinger(sb.x+30, sb.y); press(true); });
+  at(1000,function(){ force(true); haptic("h4", sb.x+30, sb.y); caption("force-press = PASTE  (v2)"); });
+  at(1150,function(){
+    var t=W(5); t.textContent="Vakhtang 🇬🇪"; t.classList.add("pasted");
+    badge("paste","PASTED ✓ — force-press");
+  });
+  at(1500,function(){ force(false); press(false); sbMode(""); });
+  at(1750,function(){ fingerHide(); captionOff(); mode("","DONE · 2 gestures · 0 menus"); badge("done","2.1s · 3× faster"); });
+  at(2600, done);
+}
+
+/* ════════ SEQUENCE ════════ */
+function playAll(){
+  if(playing) return;
+  playing=true;
+  scrim.classList.add("hide");
+  resetScene();
+  playBtn.textContent="▶ Playing…";
+  // ACT 1
+  at(300,function(){ actClassic(function(){
+    // small beat, reset doc for PressOff
+    at(400,function(){ build();
+      actPressOff(function(){
+        at(500,function(){ actPaste(function(){
+          playing=false; playBtn.textContent="↻ Replay demo";
+          mode("","— REPLAY —");
+        }); });
+      });
+    });
+  }); });
+}
+
+playBtn.addEventListener("click", playAll);
+scrim.addEventListener("click", playAll);
+build();   // show initial text behind scrim
+
+
+/* ════════ INTERACTIVE TESTER (pure patent flow) ════════ */
+(function(){
+  var SAMP=[
+"Investor update — Q2\n\nPressOff demo shipped to TestFlight.\nPatent filed: Sakpatenti + USPTO.\n\n— Vakhtang Gogichashvili 🇬🇪",
+"Hey! Try PressOff 🤯\n\nPress the spacebar, slide, lift — copied.\nPress, slide, lift — pasted.\nNo menus. Pure flow.",
+"შეხვედრის ჩანაწერი ✨\n\nპრესოფი — ერთი თითი, ნული მენიუ.\nმონიშნე · დააკოპირე · ჩასვი.\n\nთბილისი 🇬🇪"
+  ];
+  var TITLES=["📝 Notes","💬 Messages","📝 ჩანაწერი"];
+  var ed=document.getElementById("tEd"), clip=document.getElementById("tClip"), clipTxt=document.getElementById("tClipTxt"),
+      sp=document.getElementById("tSpace"), spLbl=document.getElementById("tSpaceLbl"), trail=document.getElementById("tTrail"),
+      flash=document.getElementById("tFlash"), pill=document.getElementById("tPill"), pillTxt=document.getElementById("tPillTxt"),
+      coach=document.getElementById("tCoach"), coachTxt=document.getElementById("tCoachTxt"), appTitle=document.getElementById("tAppTitle"),
+      banner=document.getElementById("tBanner"), banIc=document.getElementById("tBanIc"), banT=document.getElementById("tBanT"), banS=document.getElementById("tBanS"),
+      lad=[null,document.getElementById("tS1"),document.getElementById("tS2"),document.getElementById("tS3"),document.getElementById("tS4")];
+
+  var T=Array.from(SAMP[0]), caret=T.length, selA=-1,selB=-1, clipboard="", popA=-1,popB=-1, cflashA=-1,cflashB=-1;
+  var ST="IDLE", held=false, moved=false, tDown=0, xDown=0, startCaret=0, anchor=0, armTimer=null, provSpaceAt=-1;
+  var CHAR_PX=6.5;
+  var forceTimer=null, forced=false;
+  var FORCE_MS=420; /* hold this long in paste mode w/o much movement = force-press paste (v2) */
+  function ladOn(n){ for(var i=1;i<=4;i++){ if(lad[i]) lad[i].classList.toggle("on", i===n); } }
+  function ladClear(){ for(var i=1;i<=4;i++){ if(lad[i]) lad[i].classList.remove("on"); } }
+  function setBanner(state){
+    banner.className="tbanner "+state;
+    if(state==="cursor"){ banIc.textContent="1"; banT.textContent="CURSOR MODE"; banS.innerHTML="Slide to move the caret · <b>lift, then press again</b> to select"; ladOn(1); }
+    else if(state==="select"){ banIc.textContent="2"; banT.textContent="SELECTION MODE"; banS.innerHTML="Slide to grow the green highlight · <b>LIFT = copy</b>"; ladOn(2); }
+    else if(state==="ready"){ banIc.textContent="✓"; banT.textContent="COPIED — ready to paste"; banS.innerHTML="Press &amp; slide to place caret · <b>lift OR force-press = paste</b>"; ladOn(3); }
+    else if(state==="paste"){ banIc.textContent="⤓"; banT.textContent="PASTE MODE"; banS.innerHTML="Slide to position · <b>lift</b> — or <b>hold = force-press</b> (v2)"; ladOn(4); }
+    else { banIc.textContent="●"; banT.textContent="Ready"; banS.textContent="Press & slide the spacebar to begin"; ladClear(); }
+  }
+
+  function vib(p){ try{ navigator.vibrate&&navigator.vibrate(p);}catch(e){} }
+  var HAP={h1:[15,"#0a84ff",1],h2:[[20,30,20],"#30d158",2],h3:[[15,40,15,40,30],"#5ac8fa",3],h4:[[60,40,90],"#ff453a",4]};
+  function fire(k,x){
+    var h=HAP[k]; vib(h[0]);
+    var r=document.createElement("div"); r.className="tripple "+k+" go";
+    r.style.left=(x!=null?x:sp.offsetWidth/2)+"px"; r.style.top="50%"; sp.appendChild(r);
+    setTimeout(function(){ r.remove(); },600);
+    flash.textContent=({h1:"H1 · light",h2:"H2 · medium",h3:"H3 · COPIED ✓",h4:"H4 · PASTED ✓"})[k];
+    flash.style.color=h[1]; flash.style.borderColor=h[1];
+    flash.classList.remove("show"); void flash.offsetWidth; flash.classList.add("show");
+    var row=document.getElementById("hapRow"+h[2]);
+    if(row){ row.classList.add("lit-"+h[2]); setTimeout(function(){ row.classList.remove("lit-"+h[2]); },800); }
+  }
+  function esc(c){ return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":c; }
+  function render(){
+    var html="", showCaret=(ST!=="SELECTION");
+    for(var i=0;i<=T.length;i++){
+      if(i===caret && showCaret) html+='<span class="tcaret'+(ST==="PASTE"?" red":"")+'"></span>';
+      if(i<T.length){
+        var cls="ch";
+        if(selA>=0&&i>=selA&&i<selB) cls+=" sel";
+        if(ST==="CURSOR" && popA<0 && i===caret) {}
+        if(cflashA>=0&&i>=cflashA&&i<cflashB) cls+=" cflash";
+        if(popA>=0&&i>=popA&&i<popB) cls+=" pop";
+        html+='<span class="'+cls+'">'+esc(T[i])+'</span>';
+      }
+    }
+    ed.innerHTML=html;
+  }
+  function setPill(){
+    var m=ST==="CURSOR"||ST==="ARMED"?"cursor":ST==="SELECTION"?"select":ST==="PASTE"?"paste":(clipboard?"ready":"");
+    pill.className="tpill "+m;
+    pillTxt.textContent=ST==="CURSOR"||ST==="ARMED"?"CURSOR":ST==="SELECTION"?"SELECT":ST==="PASTE"?"PASTE":clipboard?"READY":"IDLE";
+    sp.className="tspace "+(ST==="CURSOR"?"m-cursor":ST==="SELECTION"?"m-select":ST==="PASTE"?"m-paste":"");
+    setBanner(ST==="CURSOR"||ST==="ARMED"?"cursor":ST==="SELECTION"?"select":ST==="PASTE"?"paste":(clipboard?"ready":"idle"));
+    spLbl.textContent=ST==="CURSOR"?"slide moves cursor · lift → press again = select":
+      ST==="SELECTION"?"slide to select · LIFT = COPY":
+      ST==="PASTE"?"slide to position · LIFT = PASTE":
+      ST==="ARMED"?"press again now → selection":
+      clipboard?"press & slide → PASTE · tap = space":"tap = space · press & slide = cursor";
+  }
+  function setCoach(h,ok){ coachTxt.innerHTML=h; coach.className="tcoach"+(ok?" ok":""); }
+  function clampC(i){ return Math.max(0,Math.min(T.length,i)); }
+  function delSel(){ if(selA>=0&&selB>selA){ T.splice(selA,selB-selA); caret=selA; selA=selB=-1; } }
+  function insAt(i,c){ Array.prototype.splice.apply(T,[i,0].concat(c)); }
+  function cancelArm(keep){ if(armTimer){clearTimeout(armTimer);armTimer=null;} if(!keep&&provSpaceAt>=0){ T.splice(provSpaceAt,1); if(caret>provSpaceAt)caret--; } provSpaceAt=-1; if(ST==="ARMED")ST="IDLE"; }
+  function showTrail(dx){ var w=Math.min(Math.abs(dx),sp.offsetWidth/2); trail.style.opacity=w>4?".8":"0"; trail.style.width=w+"px"; trail.style.transform="translateY(-50%)"+(dx<0?(" translateX(-"+w+"px)"):""); }
+  function hideTrail(){ trail.style.opacity="0"; trail.style.width="0"; }
+
+  function doPaste(){
+    if(!clipboard) return;
+    var ch=Array.from(clipboard); insAt(caret,ch); popA=caret; popB=caret+ch.length; caret=popB;
+    setTimeout(function(){ popA=popB=-1; render(); },800);
+    ST="IDLE"; held=false;
+    setPill(); render();
+  }
+  function typeChar(ch){ cancelArm(true); delSel(); insAt(caret,[ch]); caret++; vib(6); render(); }
+  function backspace(){ cancelArm(true); if(selA>=0&&selB>selA){ delSel(); } else if(caret>0){ T.splice(caret-1,1); caret--; } vib(6); render(); }
+
+  function down(clientX){
+    var now=Date.now(), rect=sp.getBoundingClientRect(), localX=clientX-rect.left;
+    held=true; tDown=now; xDown=clientX; moved=false;
+    if(ST==="ARMED"){
+      cancelArm(false);
+      ST="SELECTION"; anchor=caret; selA=caret; selB=caret; startCaret=caret;
+      fire("h2",localX); setCoach("<b>Selection mode!</b> Slide to highlight — then <b>lift</b> to copy");
+    } else {
+      ST=clipboard?"PASTE":"CURSOR"; startCaret=caret; fire("h1",localX); forced=false;
+      if(ST==="PASTE"){
+        setCoach("<b>Paste mode!</b> Slide to position, then <b>lift</b> — or <b>hold</b> to force-press (v2)");
+        if(forceTimer) clearTimeout(forceTimer);
+        forceTimer=setTimeout(function(){
+          if(held && ST==="PASTE" && !moved && clipboard){
+            forced=true;
+            sp.classList.add("forcing");
+            fire("h4", localX);
+            doPaste();
+            setCoach("<b>FORCE-PRESS PASTE ✓</b> — the v2 method for laptop trackpads 🎉", true);
+            setTimeout(function(){ sp.classList.remove("forcing"); },500);
+          }
+        }, FORCE_MS);
+      } else {
+        setCoach("<b>Cursor mode!</b> Slide to move · lift &amp; <b>press again</b> to select");
+      }
+    }
+    setPill(); render();
+  }
+  function move(clientX){
+    if(!held) return;
+    var dx=clientX-xDown;
+    if(Math.abs(dx)>5){ moved=true; showTrail(dx); if(forceTimer){ clearTimeout(forceTimer); forceTimer=null; } }
+    var idx=clampC(startCaret+Math.round(dx/CHAR_PX));
+    if(ST==="CURSOR"||ST==="PASTE"){ caret=idx; }
+    else if(ST==="SELECTION"){ caret=idx; selA=Math.min(anchor,idx); selB=Math.max(anchor,idx); }
+    render();
+  }
+  function up(){
+    if(!held) return;
+    held=false; hideTrail();
+    sp.classList.remove("forcing");
+    if(forceTimer){ clearTimeout(forceTimer); forceTimer=null; }
+    if(forced){ forced=false; return; }   /* force-press already pasted on hold */
+    var dur=Date.now()-tDown, rw=sp.offsetWidth;
+    if(ST==="SELECTION"){
+      if(selB>selA){
+        clipboard=T.slice(selA,selB).join("");
+        clip.classList.remove("empty"); clipTxt.textContent='Clipboard: "'+clipboard+'"';
+        fire("h3",rw/2);
+        cflashA=selA; cflashB=selB;        /* only selected text pulses */
+        setCoach("<b>COPIED — no menu!</b> Press &amp; slide the spacebar, lift = paste anywhere",true);
+        selA=selB=-1; ST="IDLE";
+        render();
+        setTimeout(function(){ cflashA=cflashB=-1; render(); },850);
+        setPill();
+        return;
+      } else { insAt(caret,[" "," "]); caret+=2; vib(6); setCoach("<b>Tip:</b> press &amp; slide, lift, then press again to select"); selA=selB=-1; ST="IDLE"; }
+    } else if(ST==="PASTE"){
+      if(!moved && dur<220){ insAt(caret,[" "]); provSpaceAt=caret; caret++; vib(6); ST="ARMED"; if(armTimer)clearTimeout(armTimer); armTimer=setTimeout(function(){ if(ST==="ARMED"){ST="IDLE";provSpaceAt=-1;setPill();render();} },800); }
+      else if(clipboard){ fire("h4",rw/2); doPaste(); setCoach("<b>PASTED by lift-off ✓</b> — select · copy · paste, 0 menus 🎉",true); return; }
+      else ST="IDLE";
+    } else if(ST==="CURSOR"){
+      if(!moved && dur<220){ insAt(caret,[" "]); provSpaceAt=caret; caret++; vib(6); }
+      else setCoach("Cursor placed — <b>press again within 0.8s</b> to start selecting");
+      ST="ARMED"; if(armTimer)clearTimeout(armTimer); armTimer=setTimeout(function(){ if(ST==="ARMED"){ST="IDLE";provSpaceAt=-1;setPill();render();} },800);
+    }
+    setPill(); render();
+  }
+  var dn=false;
+  sp.addEventListener("pointerdown",function(e){ e.preventDefault(); dn=true; try{sp.setPointerCapture(e.pointerId);}catch(_){} down(e.clientX); });
+  sp.addEventListener("pointermove",function(e){ if(dn) move(e.clientX); });
+  sp.addEventListener("pointerup",function(e){ e.preventDefault(); if(dn){ dn=false; up(); } });
+  sp.addEventListener("pointercancel",function(){ if(dn){ dn=false; up(); } });
+  sp.addEventListener("contextmenu",function(e){ e.preventDefault(); });
+
+  var ABC=[["q","w","e","r","t","y","u","i","o","p"],["a","s","d","f","g","h","j","k","l"],["⇧","z","x","c","v","b","n","m","⌫"]];
+  var NUM=[["1","2","3","4","5","6","7","8","9","0"],["-","/",":",";","(",")","₾","&","@"],["#","\u0022","'",".",",","?","!","%","⌫"]];
+  var lay=0, shift=false;
+  function keys(){
+    var L=lay===0?ABC:NUM;
+    for(var r=0;r<3;r++){
+      var row=document.getElementById("tRow"+r); row.innerHTML="";
+      L[r].forEach(function(k){
+        var d=document.createElement("div"); var fn=(k==="⇧"||k==="⌫");
+        d.className="tkey"+(fn?" fn":""); if(k==="⇧"&&shift)d.classList.add("lit");
+        d.textContent=(k.length===1&&lay===0&&shift)?k.toUpperCase():k;
+        d.addEventListener("pointerdown",function(e){ e.preventDefault(); d.classList.add("flash"); setTimeout(function(){ d.classList.remove("flash"); },120);
+          if(k==="⌫") backspace();
+          else if(k==="⇧"){ shift=!shift; keys(); }
+          else { typeChar((lay===0&&shift)?k.toUpperCase():k); if(shift){ shift=false; keys(); } }
+        });
+        row.appendChild(d);
+      });
+    }
+    document.getElementById("tLay").textContent=lay===0?"123":"ABC";
+  }
+  document.getElementById("tLay").addEventListener("pointerdown",function(e){ e.preventDefault(); lay=1-lay; shift=false; keys(); });
+  document.getElementById("tRet").addEventListener("pointerdown",function(e){ e.preventDefault(); typeChar("\n"); });
+
+  document.querySelectorAll(".tsegbtn").forEach(function(b){
+    b.addEventListener("click",function(){ document.querySelectorAll(".tsegbtn").forEach(function(x){ x.classList.remove("on"); }); b.classList.add("on"); loadS(parseInt(b.dataset.s,10)); });
+  });
+  function loadS(i){ T=Array.from(SAMP[i]); caret=T.length; selA=selB=-1; popA=popB=-1; cflashA=cflashB=-1; provSpaceAt=-1; ST="IDLE"; held=false; if(armTimer){clearTimeout(armTimer);armTimer=null;} appTitle.textContent=TITLES[i]; setPill(); render(); setCoach("<b>Step 1:</b> press the spacebar and slide — the cursor follows your finger"); }
+  document.getElementById("tReset").addEventListener("click",function(){ var on=document.querySelector(".tsegbtn.on"); clipboard=""; clip.classList.add("empty"); clipTxt.textContent="Clipboard empty"; loadS(on?parseInt(on.dataset.s,10):0); });
+  document.getElementById("tClipX").addEventListener("click",function(){ clipboard=""; clip.classList.add("empty"); clipTxt.textContent="Clipboard empty"; setPill(); });
+
+  keys(); setPill(); render();
+})();
+
+/* haptic cards tap-to-feel */
+[[1,15],[2,[20,30,20]],[3,[15,40,15,40,30]],[4,[60,40,90]]].forEach(function(a){
+  var row=document.getElementById("hapRow"+a[0]);
+  row.addEventListener("click",function(){ vib(a[1]); row.classList.add("lit-"+a[0]); setTimeout(function(){ row.classList.remove("lit-"+a[0]); },900); });
+});
+</script>
+
+</body>
+</html>
